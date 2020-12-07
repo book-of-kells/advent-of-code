@@ -27,7 +27,7 @@ func makeDataArr(s *bufio.Scanner) []interface{} {
 }
 
 func getFile() *os.File {
-	fptr := flag.String(".", "input.txt", "file path to read from")
+	fptr := flag.String("file", "input.txt", "file path to read from")
 	flag.Parse()
 
 	f, err := os.Open(*fptr)
