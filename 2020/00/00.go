@@ -1,11 +1,24 @@
 package main
 
-import "bufio"
+import (
+	"bufio"
+	"flag"
+	"fmt"
+)
+
+var VERBOSE = false
 
 func main() {
+	vptr := flag.Bool("v", false, "verbose")
+	flag.Parse()
+	VERBOSE = *vptr
+
 	f := getFile()
 	defer f.Close()
-	_ = makeDataArr(bufio.NewScanner(f))
+	dataArr := makeDataArr(bufio.NewScanner(f))
 
-	// do stuff with array of input data
+	for i, elem := range dataArr {
+		_ = fmt.Sprintf("\nelement %d\n%s\n", i, elem)
+	}
+
 }
