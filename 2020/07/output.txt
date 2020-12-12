@@ -1,0 +1,130 @@
+*********** SHINY GOLD **************
+SHINY GOLD
+├── *pale yellow [dotted black, drab silver]
+│   └── PALE INDIGO
+├── *dull salmon
+│   └── dark magenta
+│   │   └── DOTTED TOMATO
+│   │   └── STRIPED BLACK
+│   │   └── DOTTED BROWN
+│   │   │   └── STRIPED CHARTREUSE
+│   │   │   └── STRIPED PLUM
+│   │   │       └── WAVY LIME
+│   │   │       └── DOTTED RED
+│   │   │
+│   │   └── MUTED TURQUOISE
+│   │   └── DULL MAROON
+│   └── PALE BLUE
+│   └── POSH MAROON
+│   └── WAVY TEAL
+│   └── WAVY CRIMSON
+│   └── SHINY BLACK
+├── *dim gold
+├── *dull purple
+│   ├── dotted magenta
+│   │   └── wavy yellow
+│   └── mirrored cyan
+├── *muted indigo
+│   └── bright yellow
+└── *posh coral
+    ├── clear beige
+    ├── faded red
+    └── muted red
+        ├── posh orange
+        └── dotted crimson
+             └── dotted fuschia
+
+shiny gold contains
+- 2 dim beige
+- 1 dark maroon
+- 4 light blue
+
+0|pale yellow
+	children: dotted black, dotted black, dotted black, dotted black, dotted black, drab silver, drab silver, shiny gold, shiny gold, shiny gold, 
+	parents: 
+... is parent of shiny gold
+
+0|dim gold
+	children: shiny gold, 
+	parents: 
+... is parent of shiny gold
+
+0|dull salmon
+	children: shiny gold, shiny gold, 
+	parents: dark magenta, 
+... is parent of shiny gold
+
+1|dark magenta
+	children: dull salmon, dull salmon, dull salmon, dull salmon, dull salmon, drab cyan, dotted maroon, dim tomato, 
+	parents: 
+... is parent of dull salmon
+
+0|dull purple
+	children: shiny gold, shiny gold, dim gray, dim gray, dim gray, dim gray, 
+	parents: mirrored cyan, dotted magenta, 
+... is parent of shiny gold
+
+1|mirrored cyan
+	children: faded plum, dull purple, dull purple, dull purple, dull purple, dull purple, 
+	parents: 
+... is parent of dull purple
+
+1|dotted magenta
+	children: dull purple, dull purple, dim gold, dim gold, dim gold, dim gold, drab gray, drab gray, drab gray, drab gray, drab gray, faded bronze, faded bronze, faded bronze, faded bronze, 
+	parents: wavy yellow, 
+... is parent of dull purple
+
+2|wavy yellow
+	children: posh plum, posh plum, posh plum, dotted chartreuse, dotted chartreuse, dotted magenta, dotted magenta, dotted magenta, dotted magenta, 
+	parents: 
+... is parent of dotted magenta
+
+0|muted indigo
+	children: shiny gold, shiny gold, shiny gold, shiny gold, clear teal, light gray, light gray, light gray, light gray, shiny orange, shiny orange, 
+	parents: bright yellow, 
+... is parent of shiny gold
+
+1|bright yellow
+	children: clear yellow, muted indigo, muted indigo, muted indigo, 
+	parents: 
+... is parent of muted indigo
+
+0|posh coral
+	children: shiny gold, dim red, dim red, dim red, dim red, dull aqua, dull aqua, dull aqua, dull aqua, dull aqua, 
+	parents: drab crimson, clear beige, muted red, faded red, 
+... is parent of shiny gold
+
+1|drab crimson
+	children: posh coral, posh coral, shiny red, 
+	parents: 
+... is parent of posh coral
+
+1|clear beige
+	children: posh coral, dim silver, dim silver, dim silver, dim silver, wavy turquoise, bright white, bright white, bright white, bright white, 
+	parents: 
+... is parent of posh coral
+
+1|muted red
+	children: plaid teal, plaid teal, plaid teal, posh coral, posh plum, posh plum, posh plum, 
+	parents: posh orange, dotted crimson, 
+... is parent of posh coral
+
+2|posh orange
+	children: wavy plum, wavy plum, wavy plum, wavy plum, posh tan, posh tan, bright blue, muted red, muted red, muted red, muted red, 
+	parents: 
+... is parent of muted red
+
+2|dotted crimson
+	children: pale magenta, pale magenta, pale magenta, pale magenta, muted red, muted red, muted red, muted red, muted red, shiny yellow, shiny yellow, shiny yellow, shiny yellow, 
+	parents: dotted fuchsia, 
+... is parent of muted red
+
+3|dotted fuchsia
+	children: vibrant cyan, dotted crimson, dotted crimson, dotted crimson, dotted crimson, 
+	parents: 
+... is parent of dotted crimson
+
+1|faded red
+	children: posh coral, posh coral, posh coral, posh coral, posh coral, dim silver, dim silver, dim silver, bright black, bright black, muted green, muted green, muted green, 
+	parents: 
+... is parent of posh coral
