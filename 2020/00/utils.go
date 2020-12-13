@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -31,9 +30,7 @@ func makeDataArr(s *bufio.Scanner) []string {
 	return dataArr
 }
 
-func getFile() *os.File {
-	fptr := flag.String("file", "input.txt", "file path to read from")
-	flag.Parse()
+func getFile(fptr *string) *os.File {
 
 	f, err := os.Open(*fptr)
 	if err != nil {
