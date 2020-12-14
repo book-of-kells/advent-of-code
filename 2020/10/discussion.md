@@ -157,7 +157,42 @@ sorted jolt adapters from testinput2.txt
 
     [0 1 2 3 5 6 7 8 11 12 13 15 16 19 20 21 22 24 27 28 29 30]
 
+First get an array of "substitutions" -- arrays of 2 or 3 consecutive integers
+
+    [
+        [0, 1],
+        [0, 1, 2],
+        [1, 2],
+        [1, 2, 3],
+        [2, 3],
+
+        [5, 6],
+        [5, 6, 7],
+        [6, 7],
+        [6, 7, 8],
+        [7, 8],
+        
+        [11, 12],
+        [11, 12, 13],
+        [12, 13],
+              
+        [15, 16],      
+        
+        [19, 20],
+        [19, 20, 21],
+        [20, 21],
+        [20, 21, 22],
+        [21, 22],
+
+        [27, 28]
+        [27, 28, 29],
+        [28, 29],
+        [28, 29, 30],
+        [29, 30]    
+    ]
+    
 array of clusters of possible substitutions
+
     [
         # seven possible combos in this cluster
         [
@@ -208,9 +243,9 @@ array of clusters of possible substitutions
 
 6 clusters
 
-    2-combo clusters: 1 > 2^1  = 2
-    4-combo clusters: 1 > 4^1  = 4
-    7-combo clusters: 2 > 7^4  = 2401
+    1-combo clusters: 1 > 2^1  = 2      (clusters with len 1)
+    4-combo clusters: 1 > 4^1  = 4      (clusters with len 3)
+    7-combo clusters: 4 > 7^4  = 2401   (clusters with len 5)
 
 multiply together to get the answer
 
