@@ -28,3 +28,6 @@ coverage
 
 # scratch files
 *.py
+
+# git-filter-repo
+.mailmap
