@@ -1,0 +1,5 @@
+part one: 2244
+	____ combinations
+	one-drop: 66
+	three-drop: 34
+	answer: 2244 = 66 * 34
