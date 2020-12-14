@@ -1,4 +1,4 @@
-module 2020/01
+module github.com/book-of-kells/advent-of-code/2020
 
 go 1.15
 
