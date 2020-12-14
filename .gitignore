@@ -25,3 +25,6 @@ coverage
 
 # goland
 .idea/
+
+# scratch files
+*.py
