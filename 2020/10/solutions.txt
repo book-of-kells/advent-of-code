@@ -3,3 +3,4 @@ part one: 2244
 	one-drop: 66
 	three-drop: 34
 	answer: 2244 = 66 * 34
+part two: 3947645370368
