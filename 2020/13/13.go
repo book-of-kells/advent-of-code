@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"math"
-
-	//"math"
 	"time"
 )
 
@@ -80,7 +78,7 @@ func sendToChan(busNum int, bchan chan *BusTimestamp, chanIdx int, minTime int) 
 	}
 	bchan <- &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
 	for {
-		earliest = earliest + (busNum * i)
+		earliest = earliest + busNum
 		bchan <- &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
 		i++
 	}
