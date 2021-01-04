@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"syscall"
 	"time"
 )
 
@@ -19,7 +20,6 @@ type BusTimestamp struct {
 	modArr []int
 }
 
-var elapsedChan = make(chan BusTimestamp)
 
 func main() {
 	fptr := flag.String("file", "input.txt", "file path to read from")
@@ -31,12 +31,16 @@ func main() {
 	f := getFile(fptr)
 	defer f.Close()
 	busArr := getBusArr(bufio.NewScanner(f))
-	//minBus, minBusIdx := getMinBus(busArr)
-	chanArr := getChanArr(busArr, nil)
+	maxBus, maxBusIdx := getMaxBus(busArr)
+	chanArr := getChanArr(busArr, &maxBusIdx)
 
 	quit := make(chan bool)
 	start := time.Now()
-	go sendTimes(busArr, chanArr, *minptr, quit)
+	//DEPRECATED: go sendTimes(busArr, chanArr, *minptr, quit)
+
+	// only send timestamps to the channel for the maximum bus number
+	go sendToChan(maxBus, chanArr[maxBusIdx], maxBusIdx, *minptr)
+	go monitorChan(chanArr[maxBusIdx], maxBusIdx, busArr, quit, &maxBus)
 
 	finished := false
 	if VERBOSE {
@@ -55,7 +59,7 @@ func main() {
 	}
 }
 
-
+// DEPRECATED
 func sendTimes(busArr []*int, chanArr []chan *BusTimestamp, min int, q chan bool) {
 	if VERBOSE {
 		fmt.Println("sendTimes():\tsending timestamps to channels with min", min)
@@ -65,7 +69,7 @@ func sendTimes(busArr []*int, chanArr []chan *BusTimestamp, min int, q chan bool
 			continue
 		}
 		go sendToChan(*bus, chanArr[i], i, min)
-		go monitorChan(chanArr[i], i, busArr, q)
+		go monitorChan(chanArr[i], i, busArr, q, nil)
 	}
 }
 
@@ -80,6 +84,10 @@ func sendToChan(busNum int, bchan chan *BusTimestamp, chanIdx int, minTime int) 
 	}
 	bchan <- &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
 	for {
+		if VERBOSE && i % 100000 == 0 {
+			// every 10,000 iterations, print an update
+			fmt.Printf("sendToChan():\tfor bus %d at index %d sending time %d\n", busNum, chanIdx, earliest)
+		}
 		earliest = earliest + busNum
 		bchan <- &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
 		i++
@@ -87,7 +95,7 @@ func sendToChan(busNum int, bchan chan *BusTimestamp, chanIdx int, minTime int) 
 }
 
 
-func monitorChan(bchan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan bool) {
+func monitorChan(bchan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan bool, maxBusNum *int) {
 	if VERBOSE {
 		fmt.Println("monitorChan():\tcheck chan at index", chanIdx)
 	}
@@ -95,7 +103,7 @@ func monitorChan(bchan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan
 	for !finished {
 		select {
 		case bPtr := <-bchan:
-			go checkBusTime(*bPtr, busArr, quit)
+			go checkBusTime(*bPtr, busArr, quit, maxBusNum)
 
 		case <-quit:
 			finished = true
@@ -108,27 +116,31 @@ func monitorChan(bchan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan
 }
 
 
-func checkBusTime(b BusTimestamp, busArr []*int, q chan bool) {
+func checkBusTime(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int) {
 	start := time.Now()
-	finished := isFinished(b.timestamp, busArr)
+	finished, firstBusMod := isFinished(b.timestamp, busArr, maxBusNum)
 	b.elapsed = time.Since(start).Microseconds()
-	elapsedChan<-b
 
-	if finished {
-		printAnswer (b, busArr, q)
+	if finished == true {
+		printAnswer(b, busArr, q, maxBusNum, firstBusMod)
 	}
 }
 
 
-func printAnswer (b BusTimestamp, busArr []*int, q chan bool) {
-	busModInfoArr := getBusModInfoArr(b.timestamp, busArr)
+func printAnswer(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int, firstBusMod *int) {
+	if firstBusMod == nil {
+		fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
+		fmt.Printf("checkBusTime():\tHOWEVER, firstBusMod is %v, so exiting program.\n", firstBusMod)
+		syscall.Exit(1)
+	}
+	busModInfoArr := getBusModInfoArr(b.timestamp, busArr, maxBusNum)
 	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
 
 	for i, busInfo := range busModInfoArr {
 		if i == 0 {
-			fmt.Printf("printAnswer():\tEARLIEST + mod %v for bus %d of index %d: ??\n", busInfo.modArr, busInfo.bus, i)
+			fmt.Printf("printAnswer():\tEARLIEST + mod %d for bus %d of index %d: %d\n", *firstBusMod, busInfo.bus, busInfo.index, b.timestamp + *firstBusMod)
 		}
-		fmt.Printf("printAnswer():\t%d\t%d\t%v*\n", i, busInfo.bus, busInfo.modArr)
+		fmt.Printf("printAnswer():\t%d\t%d\t%v*\n", busInfo.index, busInfo.bus, busInfo.modArr)
 
 	}
 
@@ -139,18 +151,12 @@ func printAnswer (b BusTimestamp, busArr []*int, q chan bool) {
 }
 
 
-func isFinished (earliest int, busArr []*int) bool {
-	/*
-	// DEPRECATED
-	busModArr := getBusModArr(earliest, busArr)
-	return isConsecutive(busModArr)
-	*/
-
-	busModInfoArr := getBusModInfoArr(earliest, busArr)
+func isFinished (earliest int, busArr []*int, maxBusNum *int) (bool, *int) {
+	busModInfoArr := getBusModInfoArr(earliest, busArr, maxBusNum)
 	return busesAreConsecutive(busModInfoArr)
 }
 
-func getBusModInfoArr(earliest int, busArr[]*int) []BusTimestamp { //map[int][]int {
+func getBusModInfoArr(earliest int, busArr[]*int, maxBusNum *int) []BusTimestamp { //map[int][]int {
 	var busModInfoArr []BusTimestamp
 
 	for idx, busPtr := range busArr {
@@ -158,12 +164,13 @@ func getBusModInfoArr(earliest int, busArr[]*int) []BusTimestamp { //map[int][]i
 			continue
 		}
 		bus := *busPtr
+		m := int(math.Ceil(float64(*maxBusNum)/float64(bus)))
 		busInfo := BusTimestamp{
 			bus: bus,
 			timestamp: earliest,
 			elapsed: 0,
 			index: idx,
-			modArr: make([]int, 5),
+			modArr: make([]int, m),
 		}
 
 		i := 1
@@ -174,8 +181,8 @@ func getBusModInfoArr(earliest int, busArr[]*int) []BusTimestamp { //map[int][]i
 			minInflation = int(math.Ceil(float64(idx/bus))) + i
 		}
 
-		// get five possible values to compare against others
-		for j := 1; j<6; j++ {
+		// get m possible values to compare against others
+		for j := 1; j<m+1; j++ {
 			minuend := minInflation * j * bus
 			subtrahend := earliest % bus
 			busMod := minuend - subtrahend
@@ -187,97 +194,41 @@ func getBusModInfoArr(earliest int, busArr[]*int) []BusTimestamp { //map[int][]i
 }
 
 
-func busesAreConsecutive(busInfoArr []BusTimestamp) bool {
+func busesAreConsecutive(busInfoArr []BusTimestamp) (bool, *int) {
 
 	firstBus := busInfoArr[0] // assumes first element in busArr != nil
 
 	for _, firstBusMod := range firstBus.modArr {
 		firstBusModDiff := firstBusMod - firstBus.index
+		boolArr := make([]bool, len(busInfoArr[1:]))
 
-		for _, nextBus := range busInfoArr[1:] {
-			nextIsConsecutive := false
+		// check the nextBus in the busInfoArr
+		for nextBusIdx, nextBus := range busInfoArr[1:] {
+
+			// check all the mods for the nextBus
 			for _, nextBusMod := range nextBus.modArr {
 				if nextBusMod - nextBus.index == firstBusModDiff {
-					nextIsConsecutive = true
-					break
+					boolArr[nextBusIdx] = true
+					break // skip to checking the next nextBus
 				}
 				if nextBusMod - nextBus.index > firstBusModDiff {
-					break
+					boolArr[nextBusIdx] = false // continue checking this nextBus's mods
 				}
+			} // check the next mod of this nextBus
+
+		} // check the next nextBus
+
+		allConsecutive := true
+		for _, isConsecutive := range boolArr {
+			if isConsecutive == false {
+				allConsecutive = false
+				break
 			}
-			if nextIsConsecutive == false {
-				return false
-			}
 		}
-		return true
+		if allConsecutive == true {
+			return allConsecutive, &firstBusMod // return true if all of the buses are consecutive
+		}
+
 	}
-	return false
+	return false, nil
 }
-
-/*
-// DEPRECATED
-
-func printAnswerOld(b BusTimestamp, busArr []*[]int, q chan bool) {
-	busModArr := getBusModArr(b.timestamp, busArr)
-	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
-	for i, busMod := range busModArr {
-		if busMod == nil {
-			continue
-		}
-		if i == 0 {
-			modFactor := (*busMod)[1]
-			fmt.Printf("checkBusTime():\tEARLIEST + mod %d for bus %d of index %d: %d\n", modFactor, (*busModArr[0])[0], i, b.timestamp+modFactor)
-		}
-		busNum := (*busMod)[0]
-		if b.bus == busNum {
-			fmt.Printf("checkBusTime():\t%d\t%v*\n", i, *busMod)
-		} else {
-			fmt.Printf("checkBusTime():\t%d\t%v\n", i, *busMod)
-		}
-	}
-	if VERBOSE {
-		fmt.Println("checkBusTime():\tsending 'true' to channel q now")
-	}
-	q <- true
-}
-
-func getBusModArr(earliest int, busArr []*int) []*[]int {
-	var busModArr []*[]int
-	for idx, busPtr := range busArr {
-		if busPtr == nil {
-			busModArr = append(busModArr, nil)
-			continue
-		}
-		i := 1
-		inflation := int(math.Ceil(float64(idx/(*busPtr)))) + i
-
-		for inflation*(*busPtr) < idx {
-			i++
-			inflation = int(math.Ceil(float64(idx/(*busPtr)))) + i
-		}
-
-		busMod := inflation*(*busPtr) - (earliest % *busPtr)
-		busModArr = append(busModArr, &[]int{*busPtr, busMod})
-	}
-	printArr(busModArr)
-	return busModArr
-}
-
-
-// todo: isConsecutive can add to a chan int for that bus, representing num times checked
-func isConsecutive(busModArr []*[]int) bool {
-	busModDiff := (*busModArr[0])[1]
-	for idx, busMod := range busModArr {
-		if busMod == nil {
-			continue
-		}
-		if (*busMod)[1] - idx != busModDiff {
-			return false
-		}
-		busModDiff = (*busMod)[1]
-	}
-	return true
-}
-
- */
-

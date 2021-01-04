@@ -53,15 +53,17 @@ func getBusArr(s *bufio.Scanner) []*int {
 	return busArr
 }
 
-
-func getChanArr(busArr []*int, minBusIdx *int) []chan *BusTimestamp {
+/*
+ *
+ */
+func getChanArr(busArr []*int, maxBusIdx *int) []chan *BusTimestamp {
 	var chanArr []chan *BusTimestamp
 	for currIdx, bus := range busArr {
 		if bus == nil {
 			chanArr = append(chanArr, nil)
 			continue
 		}
-		if minBusIdx != nil && *minBusIdx != currIdx {
+		if maxBusIdx != nil && *maxBusIdx != currIdx {
 			chanArr = append(chanArr, nil)
 			continue
 		}
@@ -80,19 +82,19 @@ func getFile(fptr *string) *os.File {
 	return f
 }
 
-func getMinBus(busArr  []*int ) (int, int){
-	minBus := 1000
-	minIdx := -1
+func getMaxBus(busArr []*int) (int, int){
+	maxBus := 1
+	maxIdx := -1
 	for idx, bus := range busArr {
 		if bus == nil {
 			continue
 		}
-		if *bus < minBus {
-			minBus = *bus
-			minIdx = idx
+		if *bus > maxBus {
+			maxBus = *bus
+			maxIdx = idx
 		}
 	}
-	return minBus, minIdx
+	return maxBus, maxIdx
 }
 
 
