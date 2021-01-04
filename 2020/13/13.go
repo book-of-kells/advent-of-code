@@ -15,6 +15,8 @@ type BusTimestamp struct {
 	bus int
 	timestamp int
 	elapsed int64
+	index int
+	modArr []int
 }
 
 var elapsedChan = make(chan BusTimestamp)
@@ -113,36 +115,131 @@ func checkBusTime(b BusTimestamp, busArr []*int, q chan bool) {
 	elapsedChan<-b
 
 	if finished {
-		busModArr := getBusModArr(b.timestamp, busArr)
-		fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
-		for i, busMod := range busModArr {
-			if busMod == nil {
-				continue
-			}
-			if i == 0 {
-				modFactor := (*busMod)[1]
-				fmt.Printf("checkBusTime():\tEARLIEST + mod %d for bus %d of index %d: %d\n", modFactor, (*busModArr[0])[0], i, b.timestamp+modFactor)
-			}
-			busNum := (*busMod)[0]
-			if b.bus == busNum {
-				fmt.Printf("checkBusTime():\t%d\t%v*\n", i, *busMod)
-			} else {
-				fmt.Printf("checkBusTime():\t%d\t%v\n", i, *busMod)
-			}
-		}
-		if VERBOSE {
-			fmt.Println("checkBusTime():\tsending 'true' to channel q now")
-		}
-		q <- true
+		printAnswer (b, busArr, q)
 	}
 }
 
 
-func isFinished (earliest int, busArr []*int) bool {
-	busModArr := getBusModArr(earliest, busArr)
-	return isConsecutive(busModArr)
+func printAnswer (b BusTimestamp, busArr []*int, q chan bool) {
+	busModInfoArr := getBusModInfoArr(b.timestamp, busArr)
+	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
+
+	for i, busInfo := range busModInfoArr {
+		if i == 0 {
+			fmt.Printf("printAnswer():\tEARLIEST + mod %v for bus %d of index %d: ??\n", busInfo.modArr, busInfo.bus, i)
+		}
+		fmt.Printf("printAnswer():\t%d\t%d\t%v*\n", i, busInfo.bus, busInfo.modArr)
+
+	}
+
+	if VERBOSE {
+		fmt.Println("printAnswer():\tsending 'true' to channel q now")
+	}
+	q <- true
 }
 
+
+func isFinished (earliest int, busArr []*int) bool {
+	/*
+	// DEPRECATED
+	busModArr := getBusModArr(earliest, busArr)
+	return isConsecutive(busModArr)
+	*/
+
+	busModInfoArr := getBusModInfoArr(earliest, busArr)
+	return busesAreConsecutive(busModInfoArr)
+}
+
+func getBusModInfoArr(earliest int, busArr[]*int) []BusTimestamp { //map[int][]int {
+	var busModInfoArr []BusTimestamp
+
+	for idx, busPtr := range busArr {
+		if busPtr == nil {
+			continue
+		}
+		bus := *busPtr
+		busInfo := BusTimestamp{
+			bus: bus,
+			timestamp: earliest,
+			elapsed: 0,
+			index: idx,
+			modArr: make([]int, 5),
+		}
+
+		i := 1
+		minInflation := int(math.Ceil(float64(idx/bus))) + i
+
+		for minInflation*bus < idx {
+			i++
+			minInflation = int(math.Ceil(float64(idx/bus))) + i
+		}
+
+		// get five possible values to compare against others
+		for j := 1; j<6; j++ {
+			minuend := minInflation * j * bus
+			subtrahend := earliest % bus
+			busMod := minuend - subtrahend
+			busInfo.modArr[j-1] = busMod
+		}
+		busModInfoArr = append(busModInfoArr, busInfo)
+	}
+	return busModInfoArr
+}
+
+
+func busesAreConsecutive(busInfoArr []BusTimestamp) bool {
+
+	firstBus := busInfoArr[0] // assumes first element in busArr != nil
+
+	for _, firstBusMod := range firstBus.modArr {
+		firstBusModDiff := firstBusMod - firstBus.index
+
+		for _, nextBus := range busInfoArr[1:] {
+			nextIsConsecutive := false
+			for _, nextBusMod := range nextBus.modArr {
+				if nextBusMod - nextBus.index == firstBusModDiff {
+					nextIsConsecutive = true
+					break
+				}
+				if nextBusMod - nextBus.index > firstBusModDiff {
+					break
+				}
+			}
+			if nextIsConsecutive == false {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+/*
+// DEPRECATED
+
+func printAnswerOld(b BusTimestamp, busArr []*[]int, q chan bool) {
+	busModArr := getBusModArr(b.timestamp, busArr)
+	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
+	for i, busMod := range busModArr {
+		if busMod == nil {
+			continue
+		}
+		if i == 0 {
+			modFactor := (*busMod)[1]
+			fmt.Printf("checkBusTime():\tEARLIEST + mod %d for bus %d of index %d: %d\n", modFactor, (*busModArr[0])[0], i, b.timestamp+modFactor)
+		}
+		busNum := (*busMod)[0]
+		if b.bus == busNum {
+			fmt.Printf("checkBusTime():\t%d\t%v*\n", i, *busMod)
+		} else {
+			fmt.Printf("checkBusTime():\t%d\t%v\n", i, *busMod)
+		}
+	}
+	if VERBOSE {
+		fmt.Println("checkBusTime():\tsending 'true' to channel q now")
+	}
+	q <- true
+}
 
 func getBusModArr(earliest int, busArr []*int) []*[]int {
 	var busModArr []*[]int
@@ -158,17 +255,11 @@ func getBusModArr(earliest int, busArr []*int) []*[]int {
 			i++
 			inflation = int(math.Ceil(float64(idx/(*busPtr)))) + i
 		}
-		//for bus 13 at index 81, factor is 7 and multiple is 91
 
 		busMod := inflation*(*busPtr) - (earliest % *busPtr)
 		busModArr = append(busModArr, &[]int{*busPtr, busMod})
-
-		/*
-		 */
 	}
-	//fmt.Println()
-	//fmt.Println(earliest)
-	//printArr(busModArr)
+	printArr(busModArr)
 	return busModArr
 }
 
@@ -187,3 +278,6 @@ func isConsecutive(busModArr []*[]int) bool {
 	}
 	return true
 }
+
+ */
+
