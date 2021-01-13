@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 
@@ -98,11 +99,25 @@ func getMaxBus(busArr []*int) (int, int){
 }
 
 
-func printArr(busModArr []*[]int) {
-	for idx, busMod := range busModArr {
-		if busMod == nil {
-			continue
-		}
-		fmt.Printf("%d\t%v\n", idx, *busMod)
+func printAnswer(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int, firstBusMod *int) {
+	if firstBusMod == nil {
+		fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
+		fmt.Printf("checkBusTime():\tHOWEVER, firstBusMod is %v, so exiting program.\n", firstBusMod)
+		syscall.Exit(1)
 	}
+	busModInfoArr := getBusModInfoArr(b.timestamp, busArr, maxBusNum)
+	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
+
+	for i, busInfo := range busModInfoArr {
+		if i == 0 {
+			fmt.Printf("printAnswer():\tEARLIEST + mod %d for bus %d of index %d: %d\n", *firstBusMod, busInfo.bus, busInfo.index, b.timestamp + *firstBusMod)
+		}
+		fmt.Printf("printAnswer():\t%d\t%d\t%v*\n", busInfo.index, busInfo.bus, busInfo.modArr)
+
+	}
+
+	if VERBOSE {
+		fmt.Println("printAnswer():\tsending 'true' to channel q now")
+	}
+	q <- true
 }

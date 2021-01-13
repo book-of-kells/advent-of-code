@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"math"
-	"syscall"
-	"time"
 )
 
 var VERBOSE = false
@@ -31,15 +29,18 @@ func main() {
 	f := getFile(fptr)
 	defer f.Close()
 	busArr := getBusArr(bufio.NewScanner(f))
+	solve(busArr, minptr)
+}
+
+func solve(busArr []*int, startAtTimestampPtr *int) {
+
 	maxBus, maxBusIdx := getMaxBus(busArr)
 	chanArr := getChanArr(busArr, &maxBusIdx)
 
 	quit := make(chan bool)
-	start := time.Now()
-	//DEPRECATED: go sendTimes(busArr, chanArr, *minptr, quit)
 
 	// only send timestamps to the channel for the maximum bus number
-	go sendToChan(maxBus, chanArr[maxBusIdx], maxBusIdx, *minptr)
+	go sendToChan(maxBus, chanArr[maxBusIdx], maxBusIdx, *startAtTimestampPtr)
 	go monitorChan(chanArr[maxBusIdx], maxBusIdx, busArr, quit, &maxBus)
 
 	finished := false
@@ -53,31 +54,17 @@ func main() {
 			quit <-finished
 		}
 	}
-	elapsed := time.Since(start)
-	if VERBOSE {
-		fmt.Println("main():\t\toutside of finished loop with elapsed time", elapsed)
-	}
-}
 
-// DEPRECATED
-func sendTimes(busArr []*int, chanArr []chan *BusTimestamp, min int, q chan bool) {
 	if VERBOSE {
-		fmt.Println("sendTimes():\tsending timestamps to channels with min", min)
-	}
-	for i, bus := range busArr {
-		if bus == nil {
-			continue
-		}
-		go sendToChan(*bus, chanArr[i], i, min)
-		go monitorChan(chanArr[i], i, busArr, q, nil)
+		fmt.Println("main():\t\toutside of finished loop")
 	}
 }
 
 
-func sendToChan(busNum int, bchan chan *BusTimestamp, chanIdx int, minTime int) {
+func sendToChan(busNum int, bchan chan *BusTimestamp, chanIdx int, startAtTimestamp int) {
 	i := 1
-	modCorrection := (busNum * i + minTime) % busNum
-	earliest := minTime + (busNum * i) - modCorrection
+	modCorrection := (busNum * i + startAtTimestamp) % busNum
+	earliest := startAtTimestamp + (busNum * i) - modCorrection
 
 	if VERBOSE {
 		fmt.Printf("sendToChan():\tfor bus %d at index %d starting time %d\n", busNum, chanIdx, earliest)
@@ -95,14 +82,14 @@ func sendToChan(busNum int, bchan chan *BusTimestamp, chanIdx int, minTime int) 
 }
 
 
-func monitorChan(bchan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan bool, maxBusNum *int) {
+func monitorChan(busChan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan bool, maxBusNum *int) {
 	if VERBOSE {
 		fmt.Println("monitorChan():\tcheck chan at index", chanIdx)
 	}
 	finished := false
 	for !finished {
 		select {
-		case bPtr := <-bchan:
+		case bPtr := <-busChan:
 			go checkBusTime(*bPtr, busArr, quit, maxBusNum)
 
 		case <-quit:
@@ -115,41 +102,13 @@ func monitorChan(bchan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan
 	}
 }
 
-
 func checkBusTime(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int) {
-	start := time.Now()
 	finished, firstBusMod := isFinished(b.timestamp, busArr, maxBusNum)
-	b.elapsed = time.Since(start).Microseconds()
 
 	if finished == true {
 		printAnswer(b, busArr, q, maxBusNum, firstBusMod)
 	}
 }
-
-
-func printAnswer(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int, firstBusMod *int) {
-	if firstBusMod == nil {
-		fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
-		fmt.Printf("checkBusTime():\tHOWEVER, firstBusMod is %v, so exiting program.\n", firstBusMod)
-		syscall.Exit(1)
-	}
-	busModInfoArr := getBusModInfoArr(b.timestamp, busArr, maxBusNum)
-	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
-
-	for i, busInfo := range busModInfoArr {
-		if i == 0 {
-			fmt.Printf("printAnswer():\tEARLIEST + mod %d for bus %d of index %d: %d\n", *firstBusMod, busInfo.bus, busInfo.index, b.timestamp + *firstBusMod)
-		}
-		fmt.Printf("printAnswer():\t%d\t%d\t%v*\n", busInfo.index, busInfo.bus, busInfo.modArr)
-
-	}
-
-	if VERBOSE {
-		fmt.Println("printAnswer():\tsending 'true' to channel q now")
-	}
-	q <- true
-}
-
 
 func isFinished (earliest int, busArr []*int, maxBusNum *int) (bool, *int) {
 	busModInfoArr := getBusModInfoArr(earliest, busArr, maxBusNum)
@@ -193,7 +152,6 @@ func getBusModInfoArr(earliest int, busArr[]*int, maxBusNum *int) []BusTimestamp
 	return busModInfoArr
 }
 
-
 func busesAreConsecutive(busInfoArr []BusTimestamp) (bool, *int) {
 
 	firstBus := busInfoArr[0] // assumes first element in busArr != nil
@@ -228,7 +186,6 @@ func busesAreConsecutive(busInfoArr []BusTimestamp) (bool, *int) {
 		if allConsecutive == true {
 			return allConsecutive, &firstBusMod // return true if all of the buses are consecutive
 		}
-
 	}
 	return false, nil
 }
