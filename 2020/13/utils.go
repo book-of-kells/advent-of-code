@@ -54,26 +54,6 @@ func getBusArr(s *bufio.Scanner) []*int {
 	return busArr
 }
 
-/*
- *
- */
-func getChanArr(busArr []*int, maxBusIdx *int) []chan *BusTimestamp {
-	var chanArr []chan *BusTimestamp
-	for currIdx, bus := range busArr {
-		if bus == nil {
-			chanArr = append(chanArr, nil)
-			continue
-		}
-		if maxBusIdx != nil && *maxBusIdx != currIdx {
-			chanArr = append(chanArr, nil)
-			continue
-		}
-		b := make(chan *BusTimestamp)
-		chanArr = append(chanArr, b)
-	}
-	return chanArr
-}
-
 func getFile(fptr *string) *os.File {
 
 	f, err := os.Open(*fptr)
@@ -99,7 +79,7 @@ func getMaxBus(busArr []*int) (int, int){
 }
 
 
-func printAnswer(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int, firstBusMod *int) {
+func printAnswer(b BusTimestamp, busArr []*int, maxBusNum *int, firstBusMod *int) {
 	if firstBusMod == nil {
 		fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
 		fmt.Printf("checkBusTime():\tHOWEVER, firstBusMod is %v, so exiting program.\n", firstBusMod)
@@ -115,9 +95,4 @@ func printAnswer(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int, fir
 		fmt.Printf("printAnswer():\t%d\t%d\t%v*\n", busInfo.index, busInfo.bus, busInfo.modArr)
 
 	}
-
-	if VERBOSE {
-		fmt.Println("printAnswer():\tsending 'true' to channel q now")
-	}
-	q <- true
 }

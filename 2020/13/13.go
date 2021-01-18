@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"math"
+	"net/http"
+	_ "net/http/pprof"
 )
 
 var VERBOSE = false
@@ -20,102 +23,67 @@ type BusTimestamp struct {
 
 
 func main() {
+
 	fptr := flag.String("file", "input.txt", "file path to read from")
 	vptr := flag.Bool("v", false, "verbose")
-	minptr := flag.Int("min", 1, "start checking at this timestamp")
+	pprofPtr := flag.Bool("pprof", false, "profiling")
+	startAtTimestampPtr := flag.Int("min", 1, "start checking at this timestamp")
 	flag.Parse()
 	VERBOSE = *vptr
 
+	if *pprofPtr == true {
+		if VERBOSE {
+			fmt.Println("Running pprof on http://localhost:6060")
+		}
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
+
 	f := getFile(fptr)
 	defer f.Close()
+
 	busArr := getBusArr(bufio.NewScanner(f))
-	solve(busArr, minptr)
+	maxBus, _ := getMaxBus(busArr)
+
+	checkBusMultiples(maxBus, *startAtTimestampPtr, busArr)
 }
 
-func solve(busArr []*int, startAtTimestampPtr *int) {
-
-	maxBus, maxBusIdx := getMaxBus(busArr)
-	chanArr := getChanArr(busArr, &maxBusIdx)
-
-	quit := make(chan bool)
-
-	// only send timestamps to the channel for the maximum bus number
-	go sendToChan(maxBus, chanArr[maxBusIdx], maxBusIdx, *startAtTimestampPtr)
-	go monitorChan(chanArr[maxBusIdx], maxBusIdx, busArr, quit, &maxBus)
-
-	finished := false
-	if VERBOSE {
-		fmt.Println("main():\t\tmonitoring quit channel ")
-	}
-	for !finished {
-		select {
-		case <-quit:
-			finished = true
-			quit <-finished
-		}
-	}
-
-	if VERBOSE {
-		fmt.Println("main():\t\toutside of finished loop")
-	}
-}
-
-
-func sendToChan(busNum int, bchan chan *BusTimestamp, chanIdx int, startAtTimestamp int) {
+func checkBusMultiples(busNum int, startAtTimestamp int, busArr []*int) {
 	i := 1
 	modCorrection := (busNum * i + startAtTimestamp) % busNum
 	earliest := startAtTimestamp + (busNum * i) - modCorrection
 
 	if VERBOSE {
-		fmt.Printf("sendToChan():\tfor bus %d at index %d starting time %d\n", busNum, chanIdx, earliest)
+		fmt.Printf("checkBusMultiples():\tfor bus %d starting time %d\n", busNum, earliest)
 	}
-	bchan <- &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
-	for {
+	busPtr := &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
+	finished := checkBusTime(*busPtr, busArr, &busNum)
+
+	for !finished {
 		if VERBOSE && i % 100000 == 0 {
 			// every 10,000 iterations, print an update
-			fmt.Printf("sendToChan():\tfor bus %d at index %d sending time %d\n", busNum, chanIdx, earliest)
+			fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d\n", busNum, earliest)
 		}
 		earliest = earliest + busNum
-		bchan <- &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
+		busPtr := &BusTimestamp{bus: busNum, timestamp: earliest, elapsed: 0}
+		finished = checkBusTime(*busPtr, busArr, &busNum)
 		i++
 	}
 }
 
+func checkBusTime(b BusTimestamp, busArr []*int, maxBusNum *int) bool {
+	busModInfoArr := getBusModInfoArr(b.timestamp, busArr, maxBusNum)
 
-func monitorChan(busChan chan *BusTimestamp, chanIdx int, busArr []*int, quit chan bool, maxBusNum *int) {
-	if VERBOSE {
-		fmt.Println("monitorChan():\tcheck chan at index", chanIdx)
-	}
-	finished := false
-	for !finished {
-		select {
-		case bPtr := <-busChan:
-			go checkBusTime(*bPtr, busArr, quit, maxBusNum)
-
-		case <-quit:
-			finished = true
-			quit <- finished
-		}
-	}
-	if VERBOSE {
-		fmt.Println("monitorChan():\toutside of finished loop for chanIdx", chanIdx)
-	}
-}
-
-func checkBusTime(b BusTimestamp, busArr []*int, q chan bool, maxBusNum *int) {
-	finished, firstBusMod := isFinished(b.timestamp, busArr, maxBusNum)
+	finished, firstBusMod := busesAreConsecutive(busModInfoArr)
 
 	if finished == true {
-		printAnswer(b, busArr, q, maxBusNum, firstBusMod)
+		printAnswer(b, busArr, maxBusNum, firstBusMod)
 	}
+	return finished
 }
 
-func isFinished (earliest int, busArr []*int, maxBusNum *int) (bool, *int) {
-	busModInfoArr := getBusModInfoArr(earliest, busArr, maxBusNum)
-	return busesAreConsecutive(busModInfoArr)
-}
-
-func getBusModInfoArr(earliest int, busArr[]*int, maxBusNum *int) []BusTimestamp { //map[int][]int {
+func getBusModInfoArr(earliest int, busArr []*int, maxBusNum *int) []BusTimestamp {
 	var busModInfoArr []BusTimestamp
 
 	for idx, busPtr := range busArr {

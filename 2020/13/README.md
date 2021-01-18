@@ -107,3 +107,35 @@ Here are some other examples:
 However, with so many bus IDs in your list, surely the actual earliest timestamp will be larger than 100000000000000!
 
 **What is the earliest timestamp such that all the listed bus IDs depart at offsets matching their positions in the list?**
+
+# notes on profiling
+
+```go
+import (
+	// ...
+    "net/http"
+    _ "net/http/pprof"
+)
+
+func main() {}
+
+    go func() {
+        log.Println(http.ListenAndServe("localhost:6060", nil))
+    }()
+    
+    // program code...
+}
+```
+
+```bash
+$ go tool pprof "http://localhost:6060/debug/pprof/profile"
+Fetching profile over HTTP from http://localhost:6060/debug/pprof/profile
+Saved profile in /Users/kells/pprof/pprof.samples.cpu.007.pb.gz
+Type: cpu
+Time: Jan 17, 2021 at 10:55pm (PST)
+Duration: 30.12s, Total samples = 30.53s (101.36%)
+Entering interactive mode (type "help" for commands, "o" for options)
+(pprof) pdf
+Generating report in profile001.pdf
+(pprof)
+```
