@@ -32,10 +32,7 @@ func makeDataArr(s *bufio.Scanner) []string {
 	return dataArr
 }
 
-/*
- * If input is an array of strings such as [ "7","13","x","x","59","x","31","19" ]
- * then output is array of []*ints such as [ 7, 13, nil, nil, 59, nil, 31, 19 ]
- */
+
 func getBusArr(s *bufio.Scanner) []BusData {
 	dataArr := makeDataArr(s)
 	var busArr []*int
@@ -71,6 +68,7 @@ func getBusArr(s *bufio.Scanner) []BusData {
 	return busModInfoArr
 }
 
+
 func getFile(fptr *string) *os.File {
 
 	f, err := os.Open(*fptr)
@@ -79,6 +77,7 @@ func getFile(fptr *string) *os.File {
 	}
 	return f
 }
+
 
 func getMaxBus(busArr []BusData) BusData {
 	maxBus := BusData{}

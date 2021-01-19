@@ -55,12 +55,13 @@ func main() {
 }
 
 func solve(maxBus BusData, startAtTimestamp int, busArr []BusData) {
-	if VERBOSE {
-		fmt.Printf("solve():\tfor bus %d starting time %d\n", maxBus.bus, maxBus.timestamp)
-	}
 
 	modCorrection := (maxBus.bus + startAtTimestamp) % maxBus.bus
 	maxBus.timestamp = startAtTimestamp + maxBus.bus - modCorrection
+
+	if VERBOSE {
+		fmt.Printf("solve():\tfor bus %d starting time %d\n", maxBus.bus, maxBus.timestamp)
+	}
 
 	elapsedTotal := time.Duration(0)
 	startTime := time.Now()
@@ -95,22 +96,12 @@ func solve(maxBus BusData, startAtTimestamp int, busArr []BusData) {
 			}
 		}
 		i++
-
 	}
 }
 
 
-func shouldContinue(busMod int, currBus BusData, maxBus BusData) bool {
-	maxBusModDiff := maxBus.bus - maxBus.index
-	return busMod - currBus.index <= maxBusModDiff
-}
-
-func isMatch(busMod int, currBus BusData, maxBus BusData) bool {
-	maxBusModDiff := maxBus.bus - maxBus.index
-	return busMod - currBus.index == maxBusModDiff
-}
-
 func checkBusTimes(maxBus BusData, busArr []BusData) bool {
+	maxBusModDiff := maxBus.bus - maxBus.index
 
 	for currIdx, currBus := range busArr {
 		currBus.mod = nil
@@ -119,8 +110,8 @@ func checkBusTimes(maxBus BusData, busArr []BusData) bool {
 
 		busMod := currBus.bus * j - maxBus.timestamp % currBus.bus
 
-		for shouldContinue(busMod, currBus, maxBus) {
-			if isMatch(busMod, currBus, maxBus) {
+		for busMod - currBus.index <= maxBusModDiff {
+			if busMod - currBus.index == maxBusModDiff {
 				busArr[currIdx].mod = &busMod
 				busArr[currIdx].timestamp = maxBus.timestamp + busMod
 				break // this bus is consecutive; move on to the next bus
