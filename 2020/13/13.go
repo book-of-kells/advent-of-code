@@ -13,7 +13,7 @@ import (
 var VERBOSE = false
 var SHOWTIMES = false
 
-type BusTimestamp struct {
+type BusData struct {
 	bus int
 	timestamp int
 	index int
@@ -45,85 +45,72 @@ func main() {
 	defer f.Close()
 
 	busArr := getBusArr(bufio.NewScanner(f))
-
 	maxBus := getMaxBus(busArr)
 
-	checkBusMultiples(maxBus, *startAtTimestampPtr, busArr)
+	solve(maxBus, *startAtTimestampPtr, busArr)
 
 	endTime := time.Now()
 	elapsed := endTime.Sub(startTime)
 	fmt.Printf("elapsed time: %v\n", elapsed)
 }
 
-func checkBusMultiples(maxBus BusTimestamp, startAtTimestamp int, busArr []BusTimestamp) {
-	i := 1
-	modCorrection := (maxBus.bus * i + startAtTimestamp) % maxBus.bus
-	maxBus.timestamp = startAtTimestamp + (maxBus.bus * i) - modCorrection
-
+func solve(maxBus BusData, startAtTimestamp int, busArr []BusData) {
 	if VERBOSE {
-		fmt.Printf("checkBusMultiples():\tfor bus %d starting time %d\n", maxBus.bus, maxBus.timestamp)
+		fmt.Printf("solve():\tfor bus %d starting time %d\n", maxBus.bus, maxBus.timestamp)
 	}
 
-	finished := checkBusTimes(maxBus, busArr)
-
-	if finished == true {
-		printAnswer(maxBus, busArr)
-	}
+	modCorrection := (maxBus.bus + startAtTimestamp) % maxBus.bus
+	maxBus.timestamp = startAtTimestamp + maxBus.bus - modCorrection
 
 	elapsedTotal := time.Duration(0)
 	startTime := time.Now()
+	finished := false
+	i := 1
 
 	for !finished {
 		if SHOWTIMES {
 			startTime = time.Now()
 		}
 
-		maxBus.timestamp += maxBus.bus
 		finished = checkBusTimes(maxBus, busArr)
-
 		if finished == true {
 			printAnswer(maxBus, busArr)
 		}
 
-		i++
+		maxBus.timestamp += maxBus.bus
+
 		if SHOWTIMES {
 			endTime := time.Now()
 			elapsed := endTime.Sub(startTime)
 			elapsedTotal += elapsed
 		}
 
+		// every 100,000,000 iterations, print an update
 		if VERBOSE && i % 100_000_000 == 0 {
-			// every 100,000,000 iterations, print an update
-
 			if SHOWTIMES {
-
 				avgElapsed := elapsedTotal.Nanoseconds()/int64(i)
-				fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d avg elapsed: %d ns\n", maxBus.bus, maxBus.timestamp, avgElapsed)
+				fmt.Printf("solve():\tfor bus %d checking time %d avg elapsed: %d ns\n", maxBus.bus, maxBus.timestamp, avgElapsed)
 			} else {
-				fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d\n", maxBus.bus, maxBus.timestamp)
+				fmt.Printf("solve():\tfor bus %d checking time %d\n", maxBus.bus, maxBus.timestamp)
 			}
-			fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d\n", maxBus.bus, maxBus.timestamp)
-
 		}
+		i++
+
 	}
 }
 
 
-func shouldContinue(busMod int, currBus BusTimestamp, maxBus BusTimestamp) bool {
+func shouldContinue(busMod int, currBus BusData, maxBus BusData) bool {
 	maxBusModDiff := maxBus.bus - maxBus.index
-	return busMod - currBus.index < maxBusModDiff
-
+	return busMod - currBus.index <= maxBusModDiff
 }
 
-func isMatch(busMod int, currBus BusTimestamp, maxBus BusTimestamp) bool {
+func isMatch(busMod int, currBus BusData, maxBus BusData) bool {
 	maxBusModDiff := maxBus.bus - maxBus.index
 	return busMod - currBus.index == maxBusModDiff
 }
 
-// busModInfoArr is an array of BusTimestamp instances.
-// The busModInfoArr doesn't have nil values because
-// each BusTimestamp instance has its own index property.
-func checkBusTimes(maxBus BusTimestamp, busArr []BusTimestamp) bool {
+func checkBusTimes(maxBus BusData, busArr []BusData) bool {
 
 	for currIdx, currBus := range busArr {
 		currBus.mod = nil
@@ -132,21 +119,13 @@ func checkBusTimes(maxBus BusTimestamp, busArr []BusTimestamp) bool {
 
 		busMod := currBus.bus * j - maxBus.timestamp % currBus.bus
 
-		if isMatch(busMod, currBus, maxBus) {
-			busArr[currIdx].mod = &busMod
-			continue
-		}
-
 		for shouldContinue(busMod, currBus, maxBus) {
-			busMod = currBus.bus * j - maxBus.timestamp % currBus.bus
 			if isMatch(busMod, currBus, maxBus) {
 				busArr[currIdx].mod = &busMod
+				busArr[currIdx].timestamp = maxBus.timestamp + busMod
 				break // this bus is consecutive; move on to the next bus
 			}
-
-			if !shouldContinue(busMod, currBus, maxBus) {
-				return false
-			}
+			busMod = currBus.bus * j - maxBus.timestamp % currBus.bus
 			j++
 		}
 

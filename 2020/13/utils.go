@@ -36,7 +36,7 @@ func makeDataArr(s *bufio.Scanner) []string {
  * If input is an array of strings such as [ "7","13","x","x","59","x","31","19" ]
  * then output is array of []*ints such as [ 7, 13, nil, nil, 59, nil, 31, 19 ]
  */
-func getBusArr(s *bufio.Scanner) []BusTimestamp {
+func getBusArr(s *bufio.Scanner) []BusData {
 	dataArr := makeDataArr(s)
 	var busArr []*int
 	for _, busNumStr := range strings.Split(dataArr[1], ",") {
@@ -51,7 +51,7 @@ func getBusArr(s *bufio.Scanner) []BusTimestamp {
 		busArr = append(busArr, &busInt)
 	}
 
-	var busModInfoArr []BusTimestamp
+	var busModInfoArr []BusData
 
 	for idx, busPtr := range busArr {
 		if busPtr == nil {
@@ -59,7 +59,7 @@ func getBusArr(s *bufio.Scanner) []BusTimestamp {
 		}
 		bus := *busPtr
 
-		busInfo := BusTimestamp{
+		busInfo := BusData{
 			bus: bus,
 			timestamp: 0,
 			index: idx,
@@ -80,8 +80,8 @@ func getFile(fptr *string) *os.File {
 	return f
 }
 
-func getMaxBus(busArr []BusTimestamp) BusTimestamp {
-	maxBus := BusTimestamp{}
+func getMaxBus(busArr []BusData) BusData {
+	maxBus := BusData{}
 	for _, currBus := range busArr {
 		if currBus.bus > maxBus.bus {
 			maxBus = currBus
@@ -91,14 +91,13 @@ func getMaxBus(busArr []BusTimestamp) BusTimestamp {
 }
 
 
-func printAnswer(b BusTimestamp, busArr []BusTimestamp) {
+func printAnswer(b BusData, busArr []BusData) {
 
 	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
+	fmt.Printf("printAnswer():\t%d + mod %d for bus %d of index %d = %d\n", b.timestamp, *(busArr[0].mod), busArr[0].bus, busArr[0].index, b.timestamp + *(busArr[0].mod))
 
-	for i, busTimestamp := range busArr {
-		if i == 0 {
-			fmt.Printf("printAnswer():\tEARLIEST + mod %d for bus %d of index %d: %d\n", *(busArr[0].mod), busTimestamp.bus, busTimestamp.index, b.timestamp + *(busArr[0].mod))
-		}
-		fmt.Printf("printAnswer():\t%d\t%d\t%d\n", busTimestamp.index, busTimestamp.bus, *(busTimestamp.mod))
+	fmt.Printf("printAnswer():\tidx\tbusNum\tmod\ttimestamp\n")
+	for _, busData := range busArr {
+		fmt.Printf("printAnswer():\t%d\t%d\t%d\t%d\n", busData.index, busData.bus, *(busData.mod), busData.timestamp)
 	}
 }
