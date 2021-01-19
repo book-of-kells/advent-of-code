@@ -5,31 +5,33 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	_ "net/http/pprof"
-	"time"
 )
 
 var VERBOSE = false
-
+var SHOWTIMES = false
 
 type BusTimestamp struct {
 	bus int
 	timestamp int
 	index int
+	multipleOfMaxBus int
+	minInflation int
 	modArr []int
 }
 
 
 func main() {
-	startTime := time.Now()
+	//startTime := time.Now()
 	fptr := flag.String("file", "input.txt", "file path to read from")
 	vptr := flag.Bool("v", false, "verbose")
 	pprofPtr := flag.Bool("pprof", false, "profiling")
+	showTimePtr := flag.Bool("time", false, "show runtimes")
 	startAtTimestampPtr := flag.Int("min", 1, "start checking at this timestamp")
 	flag.Parse()
 	VERBOSE = *vptr
+	SHOWTIMES = *showTimePtr
 
 	if *pprofPtr == true {
 		if VERBOSE {
@@ -43,53 +45,64 @@ func main() {
 	f := getFile(fptr)
 	defer f.Close()
 
-	busArr := getBusArr(bufio.NewScanner(f))
-	maxBus, _ := getMaxBus(busArr)
+	busArr, maxBusNum := getBusArr(bufio.NewScanner(f))
 
-	checkBusMultiples(maxBus, *startAtTimestampPtr, busArr)
+	checkBusMultiples(maxBusNum, *startAtTimestampPtr, busArr)
 
-	endTime := time.Now()
-	elapsed := endTime.Sub(startTime)
-	fmt.Printf("elapsed time: %v\n", elapsed)
+	//endTime := time.Now()
+	//elapsed := endTime.Sub(startTime)
+	//fmt.Printf("elapsed time: %v\n", elapsed)
 }
 
-func checkBusMultiples(busNum int, startAtTimestamp int, busArr []*int) {
+func checkBusMultiples(maxBusNum int, startAtTimestamp int, busArr []BusTimestamp) {
 	i := 1
-	modCorrection := (busNum * i + startAtTimestamp) % busNum
-	earliest := startAtTimestamp + (busNum * i) - modCorrection
+	modCorrection := (maxBusNum * i + startAtTimestamp) % maxBusNum
+	earliest := startAtTimestamp + (maxBusNum * i) - modCorrection
 
 	if VERBOSE {
-		fmt.Printf("checkBusMultiples():\tfor bus %d starting time %d\n", busNum, earliest)
+		fmt.Printf("checkBusMultiples():\tfor bus %d starting time %d\n", maxBusNum, earliest)
 	}
-	busPtr := &BusTimestamp{bus: busNum, timestamp: earliest}
-	finished := checkBusTime(*busPtr, busArr, &busNum)
+	busPtr := &BusTimestamp{bus: maxBusNum, timestamp: earliest}
+	finished := checkBusTime(*busPtr, busArr)
 
-	elapsedTotal := time.Duration(0)
+	//elapsedTotal := time.Duration(0)
+	//startTime := time.Now()
 
 	for !finished {
-		startTime := time.Now()
-		earliest = earliest + busNum
-		busPtr := &BusTimestamp{bus: busNum, timestamp: earliest}
-		finished = checkBusTime(*busPtr, busArr, &busNum)
+		//if SHOWTIMES {
+		//	startTime = time.Now()
+		//}
+		earliest = earliest + maxBusNum
+		busPtr := &BusTimestamp{bus: maxBusNum, timestamp: earliest}
+		finished = checkBusTime(*busPtr, busArr)
 		i++
-		endTime := time.Now()
-		elapsed := endTime.Sub(startTime)
-		elapsedTotal += elapsed
+		//if SHOWTIMES {
+		//	endTime := time.Now()
+		//	elapsed := endTime.Sub(startTime)
+		//	elapsedTotal += elapsed
+		//}
 		if VERBOSE && i % 1000000 == 0 {
 			// every 1,000,000 iterations, print an update
-			avgElapsed := elapsedTotal.Nanoseconds()/int64(i)
-			fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d avg elapsed: %d ns\n", busNum, earliest, avgElapsed)
+
+			//if SHOWTIMES {
+			//	avgElapsed := elapsedTotal.Nanoseconds()/int64(i)
+			//	fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d avg elapsed: %d ns\n", maxBusNum, earliest, avgElapsed)
+			//} else {
+			//	fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d\n", maxBusNum, earliest)
+			//}
+			fmt.Printf("checkBusMultiples():\tfor bus %d checking time %d\n", maxBusNum, earliest)
+
 		}
 	}
 }
 
-func checkBusTime(b BusTimestamp, busArr []*int, maxBusNum *int) bool {
-	busModInfoArr := getBusModInfoArr(b.timestamp, busArr, maxBusNum)
+func checkBusTime(b BusTimestamp, busArr []BusTimestamp) bool {
+	fillBusModArrays(b.timestamp, busArr)
 
-	finished, firstBusMod := busesAreConsecutive(busModInfoArr)
+	finished, firstBusMod := busesAreConsecutive(busArr)
 
 	if finished == true {
-		printAnswer(b, busArr, maxBusNum, firstBusMod)
+		printAnswer(b, busArr, firstBusMod)
 	}
 	return finished
 }
@@ -97,40 +110,17 @@ func checkBusTime(b BusTimestamp, busArr []*int, maxBusNum *int) bool {
 // busModInfoArr is an array of BusTimestamp instances.
 // The busModInfoArr doesn't have nil values because
 // each BusTimestamp instance has its own index property.
-func getBusModInfoArr(earliest int, busArr []*int, maxBusNum *int) []BusTimestamp {
-	var busModInfoArr []BusTimestamp
+func fillBusModArrays(earliest int, busArr []BusTimestamp) { // []BusTimestamp {
 
-	for idx, busPtr := range busArr {
-		if busPtr == nil {
-			continue
-		}
-		bus := *busPtr
-		m := int(math.Ceil(float64(*maxBusNum)/float64(bus)))
-		busInfo := BusTimestamp{
-			bus: bus,
-			timestamp: earliest,
-			index: idx,
-			modArr: make([]int, m),
-		}
+	for _, busTimestamp := range busArr {
 
-		i := 1
-		minInflation := int(math.Ceil(float64(idx/bus))) + i
-
-		for minInflation*bus < idx {
-			i++
-			minInflation = int(math.Ceil(float64(idx/bus))) + i
+		// get multipleOfMaxBus possible values to compare against others
+		for j := 1; j<busTimestamp.multipleOfMaxBus+1; j++ {
+			minuend := busTimestamp.minInflation * j * busTimestamp.bus
+			subtrahend := earliest % busTimestamp.bus
+			busTimestamp.modArr[j-1] = minuend - subtrahend
 		}
-
-		// get m possible values to compare against others
-		for j := 1; j<m+1; j++ {
-			minuend := minInflation * j * bus
-			subtrahend := earliest % bus
-			busMod := minuend - subtrahend
-			busInfo.modArr[j-1] = busMod
-		}
-		busModInfoArr = append(busModInfoArr, busInfo)
 	}
-	return busModInfoArr
 }
 
 func busesAreConsecutive(busInfoArr []BusTimestamp) (bool, *int) {
