@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 
@@ -38,7 +36,7 @@ func makeDataArr(s *bufio.Scanner) []string {
  * If input is an array of strings such as [ "7","13","x","x","59","x","31","19" ]
  * then output is array of []*ints such as [ 7, 13, nil, nil, 59, nil, 31, 19 ]
  */
-func getBusArr(s *bufio.Scanner) ([]BusTimestamp, int) {
+func getBusArr(s *bufio.Scanner) []BusTimestamp {
 	dataArr := makeDataArr(s)
 	var busArr []*int
 	for _, busNumStr := range strings.Split(dataArr[1], ",") {
@@ -55,37 +53,22 @@ func getBusArr(s *bufio.Scanner) ([]BusTimestamp, int) {
 
 	var busModInfoArr []BusTimestamp
 
-	maxBusNum, _ := getMaxBus(busArr)
 	for idx, busPtr := range busArr {
 		if busPtr == nil {
 			continue
 		}
 		bus := *busPtr
 
-		m := int(math.Ceil(float64(maxBusNum)/float64(bus)))
-
-
-		i := 1
-		minInflation := int(math.Ceil(float64(idx/bus))) + i
-
-		for minInflation*bus < idx {
-			i++
-			minInflation = int(math.Ceil(float64(idx/bus))) + i
-		}
-
 		busInfo := BusTimestamp{
 			bus: bus,
 			timestamp: 0,
 			index: idx,
-			multipleOfMaxBus: m,
-			minInflation: minInflation,
-			modArr: make([]int, m),
 		}
 
 		busModInfoArr = append(busModInfoArr, busInfo)
 	}
 
-	return busModInfoArr, maxBusNum
+	return busModInfoArr
 }
 
 func getFile(fptr *string) *os.File {
@@ -97,37 +80,25 @@ func getFile(fptr *string) *os.File {
 	return f
 }
 
-func getMaxBus(busArr []*int) (int, int){
-	maxBus := 1
-	maxIdx := -1
-	for idx, bus := range busArr {
-		if bus == nil {
-			continue
-		}
-		if *bus > maxBus {
-			maxBus = *bus
-			maxIdx = idx
+func getMaxBus(busArr []BusTimestamp) BusTimestamp {
+	maxBus := BusTimestamp{}
+	for _, currBus := range busArr {
+		if currBus.bus > maxBus.bus {
+			maxBus = currBus
 		}
 	}
-	return maxBus, maxIdx
+	return maxBus
 }
 
 
-func printAnswer(b BusTimestamp, busArr []BusTimestamp, firstBusMod *int) {
-	if firstBusMod == nil {
-		fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
-		fmt.Printf("checkBusTime():\tHOWEVER, firstBusMod is %v, so exiting program.\n", firstBusMod)
-		syscall.Exit(1)
-	}
-	fillBusModArrays(b.timestamp, busArr)
+func printAnswer(b BusTimestamp, busArr []BusTimestamp) {
 
 	fmt.Printf("\n\ncheckBusTime():\tEARLIEST: %d FOR BUS %d\n", b.timestamp, b.bus)
 
-	for i, busInfo := range busArr {
+	for i, busTimestamp := range busArr {
 		if i == 0 {
-			fmt.Printf("printAnswer():\tEARLIEST + mod %d for bus %d of index %d: %d\n", *firstBusMod, busInfo.bus, busInfo.index, b.timestamp + *firstBusMod)
+			fmt.Printf("printAnswer():\tEARLIEST + mod %d for bus %d of index %d: %d\n", *(busArr[0].mod), busTimestamp.bus, busTimestamp.index, b.timestamp + *(busArr[0].mod))
 		}
-		fmt.Printf("printAnswer():\t%d\t%d\t%v*\n", busInfo.index, busInfo.bus, busInfo.modArr)
-
+		fmt.Printf("printAnswer():\t%d\t%d\t%d\n", busTimestamp.index, busTimestamp.bus, *(busTimestamp.mod))
 	}
 }
