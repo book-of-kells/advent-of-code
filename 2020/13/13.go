@@ -104,12 +104,23 @@ func checkBusTimes(maxBus BusData, busArr []BusData) bool {
 	maxBusModDiff := maxBus.bus - maxBus.index
 
 	for currIdx, currBus := range busArr {
+		originalBusMod := currBus.bus - maxBus.timestamp % currBus.bus
 		currBus.mod = nil
 		busArr[currIdx].mod = nil
+
+		if (maxBusModDiff - (originalBusMod - currBus.index)) % currBus.bus != 0 {
+			return false
+		}
+
+		busArr[currIdx].mod = &originalBusMod
+		busArr[currIdx].timestamp = maxBus.timestamp + originalBusMod
+
+		if currIdx != 0 {
+			continue
+		}
+
 		j := 1
-
 		busMod := currBus.bus * j - maxBus.timestamp % currBus.bus
-
 		for busMod - currBus.index <= maxBusModDiff {
 			if busMod - currBus.index == maxBusModDiff {
 				busArr[currIdx].mod = &busMod
@@ -118,10 +129,6 @@ func checkBusTimes(maxBus BusData, busArr []BusData) bool {
 			}
 			busMod = currBus.bus * j - maxBus.timestamp % currBus.bus
 			j++
-		}
-
-		if busArr[currIdx].mod == nil {
-			return false
 		}
 	}
 	return true
